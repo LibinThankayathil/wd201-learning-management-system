@@ -10,12 +10,40 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      // A chapter belongs to a course
+      Chapter.belongsTo(models.Course, {
+        foreignKey: 'courseId',
+        as: 'course'
+      });
+
+      // A chapter has many pages
+      Chapter.hasMany(models.Page, {
+        foreignKey: 'chapterId',
+        as: 'pages'
+      });
     }
   }
   Chapter.init({
-    title: DataTypes.STRING,
-    courseId: DataTypes.INTEGER
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    courseId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Courses',
+        key: 'id'
+      }
+    }
   }, {
     sequelize,
     modelName: 'Chapter',

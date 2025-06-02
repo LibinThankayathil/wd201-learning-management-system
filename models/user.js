@@ -10,21 +10,56 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      // A user can create many courses (as an educator)
+      User.hasMany(models.Course, {
+        foreignKey: 'userId',
+        as: 'createdCourses'
+      });
+      
+      // A user can be enrolled in many courses (as a student)
+      User.belongsToMany(models.Course, {
+        through: models.Enrollment,
+        foreignKey: 'userId',
+        as: 'enrolledCourses'
+      });
+
+      // A user has many progress records
+      User.hasMany(models.Progress, {
+        foreignKey: 'userId'
+      });
     }
   }
   User.init({
-  name: DataTypes.STRING,
-  email: DataTypes.STRING,
-  password: DataTypes.STRING,
-  role: {
-    type: DataTypes.ENUM('student', 'educator'),
-    allowNull: false,
-    defaultValue: 'student'
-  }
-}, {
-  sequelize,
-  modelName: 'User',
-});
+    name: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: true
+      }
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: true
+      }
+    },
+    role: {
+      type: DataTypes.ENUM('student', 'educator'),
+      allowNull: false,
+      defaultValue: 'student'
+    }
+  }, {
+    sequelize,
+    modelName: 'User',
+  });
   return User;
 };

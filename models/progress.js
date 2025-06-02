@@ -10,16 +10,48 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      // define association here
+      // Progress belongs to a user
+      Progress.belongsTo(models.User, {
+        foreignKey: 'userId'
+      });
+
+      // Progress belongs to a page
+      Progress.belongsTo(models.Page, {
+        foreignKey: 'pageId'
+      });
     }
   }
   Progress.init({
-    userId: DataTypes.INTEGER,
-    pageId: DataTypes.INTEGER,
-    isComplete: DataTypes.BOOLEAN
+    userId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    pageId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Pages',
+        key: 'id'
+      }
+    },
+    completed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false
+    }
   }, {
     sequelize,
     modelName: 'Progress',
+    indexes: [
+      {
+        unique: true,
+        fields: ['userId', 'pageId']
+      }
+    ]
   });
   return Progress;
 };
