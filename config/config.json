@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "nibil567",
+    "database": "wd-proj-dev",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "postgres",
+    "password": "nibil567",
+    "database": "wd-proj-test",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "postgres",
+    "password": "nibil567",
+    "database": "wd-proj-production",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  }
+}
