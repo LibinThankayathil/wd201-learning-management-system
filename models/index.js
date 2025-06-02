@@ -40,29 +40,4 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-
-// Associations
-
-// User (Educator) has many Courses
-db.User.hasMany(db.Course, { foreignKey: "userId" });
-db.Course.belongsTo(db.User, { foreignKey: "userId" });
-
-// Course has many Chapters
-db.Course.hasMany(db.Chapter, { foreignKey: "courseId" });
-db.Chapter.belongsTo(db.Course, { foreignKey: "courseId" });
-
-// Chapter has many Pages
-db.Chapter.hasMany(db.Page, { foreignKey: "chapterId" });
-db.Page.belongsTo(db.Chapter, { foreignKey: "chapterId" });
-
-// Many-to-many: User <-> Course through Enrollment
-db.User.belongsToMany(db.Course, { through: db.Enrollment, foreignKey: "userId" });
-db.Course.belongsToMany(db.User, { through: db.Enrollment, foreignKey: "courseId" });
-
-// Progress: User <-> Page
-db.User.belongsToMany(db.Page, { through: db.Progress, foreignKey: "userId" });
-db.Page.belongsToMany(db.User, { through: db.Progress, foreignKey: "pageId" });
-
-
-
 module.exports = db;
