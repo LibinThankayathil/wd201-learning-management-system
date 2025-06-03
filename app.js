@@ -15,6 +15,8 @@ const connectEnsureLogin = require("connect-ensure-login");
 const LocalStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
 
+// const flash = require("connect-flash");
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -35,6 +37,16 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+//connect-flash middleware for flash messages
+// app.use(flash());
+// app.use((req, res, next) => {
+//   res.locals.success_msg = req.flash("success_msg");
+//   res.locals.error_msg = req.flash("error_msg");
+//   res.locals.error = req.flash("error"); // Often used with Passport
+//   next();
+// });
+
+
 // Passport local strategy for authentication
 passport.use(
   new LocalStrategy(
@@ -46,13 +58,13 @@ passport.use(
       User.findOne({ where: { email: username } })
         .then(async (user) => {
           if (!user) {
-            return done(null, false, { message: "User not found" });
+            return done(null, false);
           }
           const result = await bcrypt.compare(password, user.password);
           if (result) {
             return done(null, user);
           } else {
-            return done(null, false, { message: "Invalid password" });
+            return done(null, false);
           }
         })
         .catch((error) => {
@@ -160,8 +172,9 @@ app.get("/educator/dashboard", async function (request, response) {
       },
     ];
 
+    console.log(request.user.name)
     response.render('educator/dashboard', { 
-      name: request.session?.user?.name || 'Educator',
+      name: request.user.name || 'Educator',
       courses: courses
     });
   } catch (error) {
@@ -173,7 +186,35 @@ app.get("/educator/dashboard", async function (request, response) {
 app.get("/student/dashboard", function (request, response) {
   // Here you would typically fetch student-specific data
   // You should get the user's name from the session or authentication
-  response.render('student/dashboard', { name: request.session?.user?.name || 'Student' });
+  try {
+    // Mock data for demonstration - replace with actual database queries
+    const courses = [
+      {
+        name: "Introduction to Web Development",
+        educatorName: "John Doe",
+        enrollments: 156,
+      },
+      {
+        name: "Advanced JavaScript",
+        educatorName: "Jane Smith",
+        enrollments: 89,
+      },
+      {
+        name: "React Fundamentals",
+        educatorName: "Mike Johnson",
+        enrollments: 234,
+      },
+    ];
+
+    console.log(request.user.name)
+    response.render('student/dashboard', { 
+      name: request.user.name || 'Student',
+      courses: courses
+    });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send('Internal Server Error');
+  }
 });
 
 app.get("/courses/create", function (request, response) {
