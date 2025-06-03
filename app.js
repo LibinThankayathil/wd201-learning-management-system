@@ -209,13 +209,17 @@ app.post("/courses/create", connectEnsureLogin.ensureLoggedIn(), async function 
 app.get("/course/:id", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
     const course = await Course.findByPk(request.params.id);
+    const allChapters = await Chapter.findAll({
+      where: { courseId: request.params.id },
+      order: [['order', 'ASC']] // Order chapters by their 'order' field
+    });
     
     if (!course) {
       return response.status(404).render('errors/coursenotfound');
     }
 
     // Check if user is the course creator or has permission to view
-    response.render('courses/view', { course, role: request.user.role });
+    response.render('courses/view', { course, role: request.user.role, chapters: allChapters });
   } catch (error) {
     console.error(error);
     response.status(500).render('errors/coursenotfound');
@@ -257,16 +261,25 @@ app.post("/course/:courseId/chapters", connectEnsureLogin.ensureLoggedIn(), asyn
       return response.status(403).render('errors/coursenotfound');
     }
 
+    // Find the maximum existing order for chapters in this course
+    const maxOrder = await Chapter.max('order', {
+      where: { courseId: course.id }
+    });
+
+    // Calculate the order for the new chapter
+    const newOrder = (maxOrder === null || maxOrder === undefined) ? 0 : maxOrder + 1;
+
     const chapter = await Chapter.create({
       title: request.body.title,
       description: request.body.description,
-      courseId: course.id
+      courseId: course.id,
+      order: newOrder // Add the calculated order here
     });
 
     response.redirect(`/course/${course.id}`);
   } catch (error) {
-    console.error(error);
-    response.status(500).render('errors/coursenotfound');
+    console.error('Error creating chapter:', error);
+    response.status(500).send('Error creating chapter');
   }
 });
 

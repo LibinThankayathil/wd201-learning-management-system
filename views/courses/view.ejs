@@ -29,10 +29,10 @@
 
             <!-- Chapters List -->
             <div class="space-y-4">
-                <% if (course.Chapters && course.Chapters.length > 0) { %>
-                    <% course.Chapters.forEach(function(chapter) { %>
+                <% if (chapters && chapters.length > 0) { %>
+                    <% chapters.forEach(function(chapter) { %>
                         <div class="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors duration-200">
-                            <h3 class="text-lg font-medium text-gray-800 mb-2"><%= chapter.title %></h3>
+                            <h3 class="text-lg font-medium text-gray-800 mb-2"><%= chapter.order + 1 %>. <%= chapter.title %></h3>
                             <p class="text-gray-600 text-sm"><%= chapter.description || 'No description available' %></p>
                         </div>
                     <% }); %>
