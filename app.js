@@ -101,12 +101,12 @@ app.get("/", function (request, response) {
   response.render('index');
 });
 
-app.get("/auth/signin", function (request, response) {
+app.get("/login", function (request, response) {
   response.render('auth/signin');
 });
 
 app.post("/session", passport.authenticate('local', {
-  failureRedirect: '/auth/signin',
+  failureRedirect: '/login',
   failureFlash: true,
 }), function (request, response) {
   // This function will not be called because of the redirect in the authenticate method
@@ -221,15 +221,12 @@ app.get("/courses/create", function (request, response) {
   response.render('courses/create');
 });
 
-app.post("/courses/create", async function (request, response) {
+app.post("/courses/create", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
-    // Create a new course in the database
     const course = await Course.create({
       title: request.body.name,
       userId: request.user.id
     });
-
-    // Redirect to the course page
     response.redirect(`/course/${course.id}`);
   } catch (error) {
     console.error(error);
@@ -238,12 +235,19 @@ app.post("/courses/create", async function (request, response) {
 });
 
 // Course view route
-app.get("/course/:id", async function (request, response) {
+app.get("/course/:id", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
-    const course = await Course.findById(request.params.id);
+    const course = await Course.findByPk(request.params.id);
+    
     if (!course) {
-      return response.status(404).send('Course not found');
+      return response.status(404).render('errors/coursenotfound');
     }
+
+    // Check if user is the course creator or has permission to view
+    if (course.userId !== request.user.id) {
+      return response.status(403).send('You do not have permission to view this course');
+    }
+    
     response.render('courses/view', { course });
   } catch (error) {
     console.error(error);

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= course.title %> - Course View</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Course Header -->
+        <div class="bg-white rounded-2xl p-8 shadow-lg mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2"><%= course.title %></h1>
+            <p class="text-gray-600">Course ID: <%= course.id %></p>
+        </div>
+
+        <!-- Chapters Section -->
+        <div class="bg-white rounded-2xl p-8 shadow-lg">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-semibold text-gray-800">Chapters</h2>
+                <button class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                    <i class="fas fa-plus mr-2"></i>Add New Chapter
+                </button>
+            </div>
+
+            <!-- Chapters List -->
+            <div class="space-y-4">
+                <% if (course.Chapters && course.Chapters.length > 0) { %>
+                    <% course.Chapters.forEach(function(chapter) { %>
+                        <div class="bg-gray-50 rounded-xl p-4 hover:bg-gray-100 transition-colors duration-200">
+                            <h3 class="text-lg font-medium text-gray-800 mb-2"><%= chapter.title %></h3>
+                            <p class="text-gray-600 text-sm"><%= chapter.description || 'No description available' %></p>
+                        </div>
+                    <% }); %>
+                <% } else { %>
+                    <div class="text-center py-8">
+                        <i class="fas fa-book-open text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">No chapters available yet. Create your first chapter!</p>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
