@@ -14,6 +14,7 @@ const session = require("express-session");
 const connectEnsureLogin = require("connect-ensure-login");
 const LocalStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
+const { user } = require("pg/lib/defaults.js");
 
 // const flash = require("connect-flash");
 
@@ -153,29 +154,14 @@ app.post("/auth/signup", async function (request, response) {
 
 app.get("/educator/dashboard", async function (request, response) {
   try {
-    // Mock data for demonstration - replace with actual database queries
-    const courses = [
-      {
-        name: "Introduction to Web Development",
-        educatorName: "John Doe",
-        enrollments: 156,
-      },
-      {
-        name: "Advanced JavaScript",
-        educatorName: "Jane Smith",
-        enrollments: 89,
-      },
-      {
-        name: "React Fundamentals",
-        educatorName: "Mike Johnson",
-        enrollments: 234,
-      },
-    ];
 
-    console.log(request.user.name)
-    response.render('educator/dashboard', { 
+    const allCourse = await Course.findAll();
+    const users = await User.findAll();
+
+    response.render('educator/dashboard', {
       name: request.user.name || 'Educator',
-      courses: courses
+      courses: allCourse,
+      educators: users
     });
   } catch (error) {
     console.error(error);
@@ -183,33 +169,18 @@ app.get("/educator/dashboard", async function (request, response) {
   }
 });
 
-app.get("/student/dashboard", function (request, response) {
+app.get("/student/dashboard", async function (request, response) {
   // Here you would typically fetch student-specific data
   // You should get the user's name from the session or authentication
   try {
-    // Mock data for demonstration - replace with actual database queries
-    const courses = [
-      {
-        name: "Introduction to Web Development",
-        educatorName: "John Doe",
-        enrollments: 156,
-      },
-      {
-        name: "Advanced JavaScript",
-        educatorName: "Jane Smith",
-        enrollments: 89,
-      },
-      {
-        name: "React Fundamentals",
-        educatorName: "Mike Johnson",
-        enrollments: 234,
-      },
-    ];
 
-    console.log(request.user.name)
+    const allCourse = await Course.findAll();
+    const users = await User.findAll();
+  
     response.render('student/dashboard', { 
       name: request.user.name || 'Student',
-      courses: courses
+      courses: allCourse,
+      educators: users
     });
   } catch (error) {
     console.error(error);
@@ -244,11 +215,8 @@ app.get("/course/:id", connectEnsureLogin.ensureLoggedIn(), async function (requ
     }
 
     // Check if user is the course creator or has permission to view
-    if (course.userId !== request.user.id) {
-      return response.status(403).send('You do not have permission to view this course');
-    }
     
-    response.render('courses/view', { course });
+    response.render('courses/view', { course, role: request.user.role });
   } catch (error) {
     console.error(error);
     response.status(500).send('Error fetching course');
