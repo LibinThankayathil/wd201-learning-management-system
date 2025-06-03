@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const { User, Course, Chapter } = require("./models");
+const { User, Course, Chapter, Page } = require("./models");
 const { name } = require("ejs");
 
 const bodyParser = require("body-parser");
@@ -280,6 +280,85 @@ app.post("/course/:courseId/chapters", connectEnsureLogin.ensureLoggedIn(), asyn
   } catch (error) {
     console.error('Error creating chapter:', error);
     response.status(500).send('Error creating chapter');
+  }
+});
+
+app.get("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    // const pages = await Page.findAll({
+    //   where: { chapterId: request.params.chapterId },
+    //   order: [['order', 'ASC']]
+    // });
+    const pages = {
+      content: 0
+    }
+
+    if (!course || !chapter) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    response.render('chapters/view', { course, chapter, pages });
+  } catch (error) {
+    console.error(error);
+    response.send(error);
+  }
+});
+
+//pages routes
+
+app.get("/course/:courseId/chapters/pages/new", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    const chapters = await Chapter.findAll({
+      where: { courseId: request.params.courseId },
+      order: [['order', 'ASC']]
+    });
+
+    if (!course) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    response.render('pages/new', { 
+      course, 
+      chapters,
+      currentChapterId: request.query.chapterId // Optional: pre-select a chapter
+    });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error);
+  }
+});
+
+app.post("/course/:courseId/chapters/pages", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    const chapter = await Chapter.findByPk(request.body.chapterId);
+
+    if (!course || !chapter) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Find the maximum existing order for pages in this chapter
+    const maxOrder = await Page.max('order', {
+      where: { chapterId: chapter.id }
+    });
+
+    // Calculate the order for the new page
+    const newOrder = (maxOrder === null || maxOrder === undefined) ? 0 : maxOrder + 1;
+
+    const page = await Page.create({
+      title: request.body.title,
+      content: request.body.content,
+      chapterId: chapter.id,
+      order: newOrder
+    });
+
+    response.redirect(`/course/${course.id}/chapters/${chapter.id}`);
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error);
   }
 });
 
