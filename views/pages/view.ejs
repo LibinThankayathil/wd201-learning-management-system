@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= chapter.title %> - <%= course.title %></title>
+    <title><%= page.title %> - <%= chapter.title %></title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50">
@@ -16,51 +16,32 @@
                     <svg class="h-4 w-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
-                    <span class="text-gray-700"><%= chapter.title %></span>
+                    <a href="/course/<%= course.id %>/chapters/<%= chapter.id %>" class="hover:text-blue-600"><%= chapter.title %></a>
+                </li>
+                <li class="flex items-center">
+                    <svg class="h-4 w-4 mx-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    <span class="text-gray-700"><%= page.title %></span>
                 </li>
             </ol>
         </nav>
 
-        <!-- Chapter Header -->
+        <!-- Page Content -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2"><%= chapter.title %></h1>
-            <p class="text-gray-600 mb-4"><%= chapter.description %></p>
-        </div>
-
-        <!-- Pages Section -->
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-semibold text-gray-800">Pages</h2>
-                <a href="/course/<%= course.id %>/chapters/pages/new" 
-                   class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-150 ease-in-out">
-                    Create New Page
-                </a>
-            </div>
-
-            <!-- First Page Display -->
-            <div class="space-y-4">
-                <% if (pages && pages.length > 0) { %>
-                    <div class="border rounded-lg p-6 hover:bg-gray-50 transition duration-150 ease-in-out">
-                        <h3 class="text-xl font-medium text-gray-800 mb-4"><%= pages[0].title %></h3>
-                        <div class="prose max-w-none">
-                            <%= pages[0].content %>
-                        </div>
-                    </div>
-                <% } else { %>
-                    <div class="text-center py-8">
-                        <p class="text-gray-500">No pages created yet. Click the button above to create your first page.</p>
-                    </div>
-                <% } %>
+            <h1 class="text-3xl font-bold text-gray-800 mb-4"><%= page.title %></h1>
+            <div class="prose max-w-none">
+                <%= page.content %>
             </div>
         </div>
 
         <!-- Navigation Section -->
-        <div class="mt-8 bg-white rounded-lg shadow-md p-6">
+        <div class="bg-white rounded-lg shadow-md p-6">
             <div class="flex justify-between items-center">
                 <!-- Previous Button -->
                 <div>
-                    <% if (currentPageIndex > 0) { %>
-                        <a href="/course/<%= course.id %>/chapters/<%= chapter.id %>/pages/<%= pages[currentPageIndex - 1].id %>" 
+                    <% if (previousPage) { %>
+                        <a href="/course/<%= course.id %>/chapters/<%= chapter.id %>/pages/<%= previousPage.id %>" 
                            class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
@@ -81,8 +62,8 @@
                     </button>
 
                     <!-- Next Button -->
-                    <% if (pages.length > 1) { %>
-                        <a href="/course/<%= course.id %>/chapters/<%= chapter.id %>/pages/<%= pages[1].id %>" 
+                    <% if (nextPage) { %>
+                        <a href="/course/<%= course.id %>/chapters/<%= chapter.id %>/pages/<%= nextPage.id %>" 
                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Next Page
                             <svg class="h-5 w-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +87,6 @@
 
     <script>
         function markAsComplete() {
-            // Add your mark as complete logic here
             fetch('/course/<%= course.id %>/chapters/<%= chapter.id %>/complete', {
                 method: 'POST',
                 headers: {
@@ -116,7 +96,6 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Update button state or show success message
                     const button = document.querySelector('button[onclick="markAsComplete()"]');
                     button.disabled = true;
                     button.classList.add('opacity-50', 'cursor-not-allowed');

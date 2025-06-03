@@ -287,22 +287,39 @@ app.get("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLogged
   try {
     const course = await Course.findByPk(request.params.courseId);
     const chapter = await Chapter.findByPk(request.params.chapterId);
-    // const pages = await Page.findAll({
-    //   where: { chapterId: request.params.chapterId },
-    //   order: [['order', 'ASC']]
-    // });
-    const pages = {
-      content: 0
-    }
+    const pages = await Page.findAll({
+      where: { chapterId: request.params.chapterId },
+      order: [['order', 'ASC']]
+    });
 
     if (!course || !chapter) {
       return response.status(404).render('errors/coursenotfound');
     }
 
-    response.render('chapters/view', { course, chapter, pages });
+    // Get the next chapter
+    const nextChapter = await Chapter.findOne({
+      where: {
+        courseId: course.id,
+        order: chapter.order + 1
+      }
+    });
+
+    // Get current page index if viewing a specific page
+    const currentPageId = request.query.pageId;
+    const currentPageIndex = currentPageId 
+      ? pages.findIndex(page => page.id === parseInt(currentPageId))
+      : 0;
+
+    response.render('chapters/view', { 
+      course, 
+      chapter, 
+      pages,
+      currentPageIndex,
+      nextChapterId: nextChapter ? nextChapter.id : null
+    });
   } catch (error) {
     console.error(error);
-    response.send(error);
+    response.status(500).send(error);
   }
 });
 
@@ -359,6 +376,75 @@ app.post("/course/:courseId/chapters/pages", connectEnsureLogin.ensureLoggedIn()
   } catch (error) {
     console.error(error);
     response.status(500).send(error);
+  }
+});
+
+app.get("/course/:courseId/chapters/:chapterId/pages/:pageId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    const currentPage = await Page.findByPk(request.params.pageId);
+    
+    if (!course || !chapter || !currentPage) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Get all pages for this chapter to determine previous/next
+    const allPages = await Page.findAll({
+      where: { chapterId: chapter.id },
+      order: [['order', 'ASC']]
+    });
+
+    // Find current page index
+    const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
+    
+    // Get previous and next pages
+    const previousPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
+    const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
+
+    // Get next chapter if this is the last page
+    const nextChapter = !nextPage ? await Chapter.findOne({
+      where: {
+        courseId: course.id,
+        order: chapter.order + 1
+      }
+    }) : null;
+
+    response.render('pages/view', {
+      course,
+      chapter,
+      page: currentPage,
+      previousPage,
+      nextPage,
+      nextChapterId: nextChapter ? nextChapter.id : null
+    });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error);
+  }
+});
+
+// Mark chapter as complete
+app.post("/course/:courseId/chapters/:chapterId/complete", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    
+    if (!chapter) {
+      return response.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    // Here you would typically update a completion status in your database
+    // For example, you might have a UserChapterProgress model
+    // await UserChapterProgress.create({
+    //   userId: request.user.id,
+    //   chapterId: chapter.id,
+    //   completed: true
+    // });
+
+    response.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
   }
 });
 
