@@ -36,22 +36,31 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Passport local strategy for authentication
-passport.use(new LocalStrategy({
-  usernameField: 'email',
-  passwordField: 'password'
-}, (username, password, done) => {
-  User.findOne({ where: { email: username, password: password } })
-    .then((user) => {
-      if (user) {
-        done(null, user);
-      } else {
-        done(null, false, { message: 'Invalid email or password' });
-      }
-    })
-    .catch((error) => {
-      done(error);
-    });
-}));
+passport.use(
+  new LocalStrategy(
+    {
+      usernameField: "email",
+      passwordField: "password",
+    },
+    (username, password, done) => {
+      User.findOne({ where: { email: username } })
+        .then(async (user) => {
+          if (!user) {
+            return done(null, false, { message: "User not found" });
+          }
+          const result = await bcrypt.compare(password, user.password);
+          if (result) {
+            return done(null, user);
+          } else {
+            return done(null, false, { message: "Invalid password" });
+          }
+        })
+        .catch((error) => {
+          return done(error);
+        });
+    },
+  ),
+);
 
 passport.serializeUser((user, done) => {
   console.log("Serializing user in session", user.id);
@@ -82,6 +91,20 @@ app.get("/", function (request, response) {
 
 app.get("/auth/signin", function (request, response) {
   response.render('auth/signin');
+});
+
+app.post("/session", passport.authenticate('local', {
+  failureRedirect: '/auth/signin',
+  failureFlash: true,
+}), function (request, response) {
+  // This function will not be called because of the redirect in the authenticate method
+  if (request.user.role === 'educator') {
+    console.log(request.user);
+    response.redirect('/educator/dashboard');
+  } else {
+    console.log(request.user);
+    response.redirect('/student/dashboard');
+  }
 });
 
 app.get("/auth/signup", function (request, response) {
@@ -162,7 +185,7 @@ app.post("/courses/create", async function (request, response) {
     // Create a new course in the database
     const course = await Course.create({
       title: request.body.name,
-      userId: request.session.user.id // Assuming you have user session
+      userId: request.user.id
     });
 
     // Redirect to the course page
