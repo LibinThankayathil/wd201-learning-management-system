@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const { User, Course } = require("./models");
+const { User, Course, Chapter } = require("./models");
 const { name } = require("ejs");
 
 const bodyParser = require("body-parser");
@@ -215,12 +215,69 @@ app.get("/course/:id", connectEnsureLogin.ensureLoggedIn(), async function (requ
     }
 
     // Check if user is the course creator or has permission to view
-    
     response.render('courses/view', { course, role: request.user.role });
   } catch (error) {
     console.error(error);
-    response.status(500).send('Error fetching course');
+    response.status(500).render('errors/coursenotfound');
   }
+});
+
+// New Chapter route
+app.get("/course/:courseId/chapters/new", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    
+    if (!course) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).render('errors/coursenotfound');
+    }
+
+    response.render('chapters/new', { course });
+  } catch (error) {
+    console.error(error);
+    response.status(500).render('errors/coursenotfound');
+  }
+});
+
+// Create Chapter route
+app.post("/course/:courseId/chapters", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    
+    if (!course) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).render('errors/coursenotfound');
+    }
+
+    const chapter = await Chapter.create({
+      title: request.body.title,
+      description: request.body.description,
+      courseId: course.id
+    });
+
+    response.redirect(`/course/${course.id}`);
+  } catch (error) {
+    console.error(error);
+    response.status(500).render('errors/coursenotfound');
+  }
+});
+
+// Sign out route
+app.get("/signout", function (request, response, next) {
+  request.logout(function(err) {
+    if (err) {
+      return next(err);
+    }
+    response.redirect("/");
+  });
 });
 
 module.exports = app;
