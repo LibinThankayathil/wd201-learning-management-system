@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const { User, Course, Chapter, Page, Progress } = require("./models");
+const { User, Course, Chapter, Page, Progress, Enrollment } = require("./models");
 const { name } = require("ejs");
 
 const bodyParser = require("body-parser");
@@ -154,13 +154,23 @@ app.post("/auth/signup", async function (request, response) {
 
 app.get("/educator/dashboard", async function (request, response) {
   try {
-
     const allCourse = await Course.findAll();
     const users = await User.findAll();
 
+    // Get enrollment counts for all courses
+    const coursesWithEnrollments = await Promise.all(allCourse.map(async (course) => {
+      const enrollmentCount = await Enrollment.count({
+        where: { courseId: course.id }
+      });
+      return {
+        ...course.toJSON(),
+        enrollments: enrollmentCount
+      };
+    }));
+
     response.render('educator/dashboard', {
       name: request.user.name || 'Educator',
-      courses: allCourse,
+      courses: coursesWithEnrollments,
       educators: users
     });
   } catch (error) {
@@ -170,16 +180,34 @@ app.get("/educator/dashboard", async function (request, response) {
 });
 
 app.get("/student/dashboard", async function (request, response) {
-  // Here you would typically fetch student-specific data
-  // You should get the user's name from the session or authentication
   try {
-
     const allCourse = await Course.findAll();
     const users = await User.findAll();
+    
+    // Get enrolled courses for the current user
+    const enrolledCourses = await Course.findAll({
+      include: [{
+        model: User,
+        as: 'students',
+        where: { id: request.user.id }
+      }]
+    });
+
+    // Get enrollment counts for all courses
+    const coursesWithEnrollments = await Promise.all(allCourse.map(async (course) => {
+      const enrollmentCount = await Enrollment.count({
+        where: { courseId: course.id }
+      });
+      return {
+        ...course.toJSON(),
+        enrollments: enrollmentCount
+      };
+    }));
   
     response.render('student/dashboard', { 
       name: request.user.name || 'Student',
-      courses: allCourse,
+      courses: coursesWithEnrollments,
+      enrolledCourses,
       educators: users
     });
   } catch (error) {
@@ -223,6 +251,40 @@ app.get("/course/:id", connectEnsureLogin.ensureLoggedIn(), async function (requ
   } catch (error) {
     console.error(error);
     response.status(500).render('errors/coursenotfound');
+  }
+});
+
+// Enroll in course route
+app.post("/course/:courseId/enroll", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const course = await Course.findByPk(request.params.courseId);
+    
+    if (!course) {
+      return response.status(404).json({ success: false, message: 'Course not found' });
+    }
+
+    // Check if user is already enrolled
+    const existingEnrollment = await Enrollment.findOne({
+      where: {
+        userId: request.user.id,
+        courseId: course.id
+      }
+    });
+
+    if (existingEnrollment) {
+      return response.status(400).json({ success: false, message: 'Already enrolled in this course' });
+    }
+
+    // Create enrollment
+    await Enrollment.create({
+      userId: request.user.id,
+      courseId: course.id
+    });
+
+    response.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
   }
 });
 
