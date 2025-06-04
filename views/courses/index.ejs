@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Courses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen p-6">
+        <!-- Top Navigation Bar -->
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-2xl font-bold text-gray-800">Available Courses</h1>
+            <a href="/" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                <i class="fas fa-home mr-2"></i>Home
+            </a>
+        </div>
+
+        <!-- Courses Grid -->
+        <div class="max-w-7xl mx-auto">
+            <%
+            function findEducator(userId){
+                const educator = educators.find(educator => educator.id === userId);
+                return educator ? educator.name : "Unknown Educator";
+            }
+            %>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <% courses.forEach(function(course) { %>
+                    <div class="bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                        <!-- Course Header -->
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-semibold text-gray-800"><%= course.title %></h3>
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">
+                                <%= course.enrollments %> Enrolled
+                            </span>
+                        </div>
+
+                        <!-- Course Details -->
+                        <div class="space-y-3 mb-4">
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-user-graduate mr-2 text-indigo-600"></i>
+                                <span>By <%= findEducator(course.userId) %></span>
+                            </div>
+                            <div class="flex items-center text-sm text-gray-600">
+                                <i class="fas fa-book-open mr-2 text-indigo-600"></i>
+                                <span>Course ID: <%= course.id %></span>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex gap-2">
+                            <a href="/course/<%= course.id %>" 
+                               class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200">
+                                <i class="fas fa-eye mr-2"></i>View Course
+                            </a>
+                            <% if (role === 'student') { %>
+                                <button onclick="enrollInCourse(<%= course.id %>)" 
+                                        class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                    <i class="fas fa-user-plus mr-2"></i>Enroll
+                                </button>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }); %>
+            </div>
+
+            <!-- Empty State -->
+            <% if (courses.length === 0) { %>
+                <div class="text-center py-12">
+                    <i class="fas fa-book-open text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600">No courses available at the moment.</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

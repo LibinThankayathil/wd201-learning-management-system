@@ -15,6 +15,7 @@ const connectEnsureLogin = require("connect-ensure-login");
 const LocalStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
 const { user } = require("pg/lib/defaults.js");
+const { where } = require("sequelize");
 
 // const flash = require("connect-flash");
 
@@ -508,6 +509,65 @@ app.post("/course/:courseId/chapters/:chapterId/complete/:pageId", connectEnsure
   } catch (error) {
     console.error(error);
     response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+//report page
+app.get("/educator/report", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    // Get all courses
+    const user = request.user;
+    const allCourses = await Course.findAll({
+      where: { userId: user.id },
+    });
+
+    // Get all users
+    const allUsers = await User.findAll({
+      where: { role: 'student' },
+      
+    });
+
+    // Get enrollments for each course
+    const enrollments = await Enrollment.findAll();
+    console.log(enrollments);
+
+    response.render('educator/report', {
+      courses: allCourses,
+      users: allUsers,
+      enrollments
+    });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send('Internal Server Error');
+  }
+});
+
+app.get("/courses", async function (request, response) {
+  try {
+    const courses = await Course.findAll();
+    const educators = await User.findAll({
+      where: { role: 'educator' }
+    });
+    
+    // Get enrollment counts for all courses
+    const coursesWithEnrollments = await Promise.all(courses.map(async (course) => {
+      const enrollmentCount = await Enrollment.count({
+        where: { courseId: course.id }
+      });
+      return {
+        ...course.toJSON(),
+        enrollments: enrollmentCount
+      };
+    }));
+
+    response.render('courses/index', { 
+      courses: coursesWithEnrollments,
+      educators,
+      role: request.user ? request.user.role : null
+    });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send('Internal Server Error');
   }
 });
 
