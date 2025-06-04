@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const { User, Course, Chapter, Page } = require("./models");
+const { User, Course, Chapter, Page, Progress } = require("./models");
 const { name } = require("ejs");
 
 const bodyParser = require("body-parser");
@@ -311,6 +311,7 @@ app.get("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLogged
       : 0;
 
     response.render('chapters/view', { 
+      role: request.user.role,
       course, 
       chapter, 
       pages,
@@ -425,21 +426,21 @@ app.get("/course/:courseId/chapters/:chapterId/pages/:pageId", connectEnsureLogi
 });
 
 // Mark chapter as complete
-app.post("/course/:courseId/chapters/:chapterId/complete", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+app.post("/course/:courseId/chapters/:chapterId/complete/:pageId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
     const chapter = await Chapter.findByPk(request.params.chapterId);
-    
-    if (!chapter) {
-      return response.status(404).json({ success: false, message: 'Chapter not found' });
+    const page = await Page.findByPk(request.params.pageId);
+
+    if (!chapter || !page) {
+      return response.status(404).json({ success: false, message: 'Chapter or Page not found' });
     }
 
     // Here you would typically update a completion status in your database
-    // For example, you might have a UserChapterProgress model
-    // await UserChapterProgress.create({
-    //   userId: request.user.id,
-    //   chapterId: chapter.id,
-    //   completed: true
-    // });
+    await Progress.create({
+      userId: request.user.id,
+      pageId: page.id,
+      isComplete: true
+    });
 
     response.json({ success: true });
   } catch (error) {

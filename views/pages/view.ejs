@@ -87,7 +87,7 @@
 
     <script>
         function markAsComplete() {
-            fetch('/course/<%= course.id %>/chapters/<%= chapter.id %>/complete', {
+            fetch('/course/<%= course.id %>/chapters/<%= chapter.id %>/complete/<%= page.id %>', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

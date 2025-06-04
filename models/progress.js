@@ -38,7 +38,7 @@ module.exports = (sequelize, DataTypes) => {
         key: 'id'
       }
     },
-    completed: {
+    isComplete: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false
