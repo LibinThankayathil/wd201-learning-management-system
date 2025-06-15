@@ -56,10 +56,18 @@
                                 <i class="fas fa-eye mr-2"></i>View Course
                             </a>
                             <% if (role === 'student') { %>
-                                <button onclick="enrollInCourse(<%= course.id %>)" 
-                                        class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
-                                    <i class="fas fa-user-plus mr-2"></i>Enroll
-                                </button>
+                                <% const isEnrolled = enrolledCourses && enrolledCourses.some(ec => ec.id === course.id); %>
+                                <% if (!isEnrolled) { %>
+                                    <button onclick="enrollInCourse(<%= course.id %>)" 
+                                            class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors duration-200">
+                                        <i class="fas fa-user-plus mr-2"></i>Enroll
+                                    </button>
+                                <% } else { %>
+                                    <button disabled
+                                            class="flex-1 inline-flex items-center justify-center px-4 py-2 bg-green-100 text-green-600 text-sm font-medium rounded-lg opacity-50 cursor-not-allowed">
+                                        <i class="fas fa-check mr-2"></i>Enrolled
+                                    </button>
+                                <% } %>
                             <% } %>
                         </div>
                     </div>

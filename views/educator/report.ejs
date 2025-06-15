@@ -51,10 +51,18 @@
                                         <div class="mt-3">
                                             <div class="flex items-center justify-between text-sm text-gray-600 mb-1">
                                                 <span>Course Progress</span>
-                                                <span>0%</span>
+                                                <span><%= course.studentProgress.find(p => p && p.student.id === user.id)?.progress || 0 %>%</span>
                                             </div>
                                             <div class="w-full bg-gray-200 rounded-full h-2">
-                                                <div class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                                                <div class="bg-indigo-600 h-2 rounded-full" style="width: <%= course.studentProgress.find(p => p && p.student.id === user.id)?.progress || 0 %>%"></div>
+                                            </div>
+                                            <div class="mt-1 text-xs text-gray-500">
+                                                <% const progress = course.studentProgress.find(p => p && p.student.id === user.id) %>
+                                                <% if (progress) { %>
+                                                    <%= progress.completedPages %> of <%= progress.totalPages %> pages completed
+                                                <% } else { %>
+                                                    No progress recorded
+                                                <% } %>
                                             </div>
                                         </div>
                                     </div>

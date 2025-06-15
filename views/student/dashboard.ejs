@@ -23,6 +23,14 @@
             <p class="text-indigo-100 text-lg">Learn your enrolled courses and enroll to new Available Courses</p>
         </div>
 
+        <!-- Progress Report Button -->
+        <div class="flex justify-end mb-6">
+            <a href="/student/progress" 
+               class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5">
+                <i class="fas fa-chart-line mr-2"></i>View Progress Report
+            </a>
+        </div>
+
         <!-- Enrolled Courses Section -->
         <% if (enrolledCourses && enrolledCourses.length > 0) { %>
             <div class="mb-8">

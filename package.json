@@ -6,7 +6,8 @@
   "scripts": {
     "start": "nodemon -e js,ejs",
     "start:prod": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "pretest": "NODE_ENV=test npx sequelize-cli db:drop && NODE_ENV=test npx sequelize-cli db:create",
+    "test": "NODE_ENV=test jest --detectOpenHandles"
   },
   "author": "",
   "license": "ISC",
@@ -24,7 +25,9 @@
   },
   "devDependencies": {
     "ejs": "^3.1.10",
+    "jest": "^30.0.0",
     "nodemon": "^3.1.10",
-    "sequelize-cli": "^6.6.3"
+    "sequelize-cli": "^6.6.3",
+    "supertest": "^7.1.1"
   }
 }

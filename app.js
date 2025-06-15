@@ -172,7 +172,8 @@ app.get("/educator/dashboard", async function (request, response) {
     response.render('educator/dashboard', {
       name: request.user.name || 'Educator',
       courses: coursesWithEnrollments,
-      educators: users
+      educators: users,
+      role: request.user.role
     });
   } catch (error) {
     console.error(error);
@@ -209,7 +210,8 @@ app.get("/student/dashboard", async function (request, response) {
       name: request.user.name || 'Student',
       courses: coursesWithEnrollments,
       enrolledCourses,
-      educators: users
+      educators: users,
+      role: request.user.role
     });
   } catch (error) {
     console.error(error);
@@ -348,18 +350,20 @@ app.post("/course/:courseId/chapters", connectEnsureLogin.ensureLoggedIn(), asyn
 
 app.get("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
-    const course = await Course.findByPk(request.params.courseId);
     const chapter = await Chapter.findByPk(request.params.chapterId);
-    const pages = await Page.findAll({
-      where: { chapterId: request.params.chapterId },
-      order: [['order', 'ASC']]
-    });
+    const course = await Course.findByPk(request.params.courseId);
 
-    if (!course || !chapter) {
+    if (!chapter || !course) {
       return response.status(404).render('errors/coursenotfound');
     }
 
-    // Get the next chapter
+    // Get all pages in the chapter
+    const pages = await Page.findAll({
+      where: { chapterId: chapter.id },
+      order: [['createdAt', 'ASC']]
+    });
+
+    // Get the next chapter ID
     const nextChapter = await Chapter.findOne({
       where: {
         courseId: course.id,
@@ -367,19 +371,16 @@ app.get("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLogged
       }
     });
 
-    // Get current page index if viewing a specific page
-    const currentPageId = request.query.pageId;
-    const currentPageIndex = currentPageId 
-      ? pages.findIndex(page => page.id === parseInt(currentPageId))
-      : 0;
+    // Get user's role
+    const role = request.user.role;
 
     response.render('chapters/view', { 
-      role: request.user.role,
       course, 
       chapter, 
       pages,
-      currentPageIndex,
-      nextChapterId: nextChapter ? nextChapter.id : null
+      currentPageIndex: 0,
+      nextChapterId: nextChapter ? nextChapter.id : null,
+      role
     });
   } catch (error) {
     console.error(error);
@@ -445,42 +446,50 @@ app.post("/course/:courseId/chapters/pages", connectEnsureLogin.ensureLoggedIn()
 
 app.get("/course/:courseId/chapters/:chapterId/pages/:pageId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
-    const course = await Course.findByPk(request.params.courseId);
+    const page = await Page.findByPk(request.params.pageId);
     const chapter = await Chapter.findByPk(request.params.chapterId);
-    const currentPage = await Page.findByPk(request.params.pageId);
-    
-    if (!course || !chapter || !currentPage) {
+    const course = await Course.findByPk(request.params.courseId);
+
+    if (!page || !chapter || !course) {
       return response.status(404).render('errors/coursenotfound');
     }
 
-    // Get all pages for this chapter to determine previous/next
-    const allPages = await Page.findAll({
+    // Get all pages in the chapter
+    const pages = await Page.findAll({
       where: { chapterId: chapter.id },
-      order: [['order', 'ASC']]
+      order: [['createdAt', 'ASC']]
     });
 
-    // Find current page index
-    const currentIndex = allPages.findIndex(p => p.id === currentPage.id);
-    
-    // Get previous and next pages
-    const previousPage = currentIndex > 0 ? allPages[currentIndex - 1] : null;
-    const nextPage = currentIndex < allPages.length - 1 ? allPages[currentIndex + 1] : null;
+    // Find the current page index
+    const currentPageIndex = pages.findIndex(p => p.id === page.id);
 
-    // Get next chapter if this is the last page
-    const nextChapter = !nextPage ? await Chapter.findOne({
+    // Get the next chapter ID
+    const nextChapter = await Chapter.findOne({
       where: {
         courseId: course.id,
         order: chapter.order + 1
       }
-    }) : null;
+    });
 
-    response.render('pages/view', {
-      course,
-      chapter,
-      page: currentPage,
-      previousPage,
+    // Get the next page
+    const nextPage = pages[currentPageIndex + 1];
+
+    // Get the previous page
+    const previousPage = pages[currentPageIndex - 1];
+
+    // Get user's role
+    const role = request.user.role;
+
+    response.render('pages/view', { 
+      course, 
+      chapter, 
+      page, 
+      pages,
+      currentPageIndex,
       nextPage,
-      nextChapterId: nextChapter ? nextChapter.id : null
+      previousPage,
+      nextChapterId: nextChapter ? nextChapter.id : null,
+      role
     });
   } catch (error) {
     console.error(error);
@@ -512,6 +521,60 @@ app.post("/course/:courseId/chapters/:chapterId/complete/:pageId", connectEnsure
   }
 });
 
+// Check page completion status
+app.get("/course/:courseId/chapters/:chapterId/pages/:pageId/status", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const progress = await Progress.findOne({
+      where: {
+        userId: request.user.id,
+        pageId: request.params.pageId,
+        isComplete: true
+      }
+    });
+
+    response.json({ completed: !!progress });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Check chapter completion status
+app.get("/course/:courseId/chapters/:chapterId/status", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const chapter = await Chapter.findByPk(request.params.chapterId, {
+      include: [{
+        model: Page,
+        as: 'pages'
+      }]
+    });
+
+    if (!chapter) {
+      return response.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    // Get all pages in the chapter
+    const pageIds = chapter.pages.map(page => page.id);
+
+    // Count completed pages
+    const completedPages = await Progress.count({
+      where: {
+        userId: request.user.id,
+        pageId: pageIds,
+        isComplete: true
+      }
+    });
+
+    // Chapter is complete if all pages are completed
+    const completed = completedPages === pageIds.length;
+
+    response.json({ completed });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
 //report page
 app.get("/educator/report", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
   try {
@@ -519,20 +582,60 @@ app.get("/educator/report", connectEnsureLogin.ensureLoggedIn(), async function 
     const user = request.user;
     const allCourses = await Course.findAll({
       where: { userId: user.id },
+      include: [{
+        model: Chapter,
+        as: 'chapters',
+        include: [{
+          model: Page,
+          as: 'pages'
+        }]
+      }]
     });
 
     // Get all users
     const allUsers = await User.findAll({
-      where: { role: 'student' },
-      
+      where: { role: 'student' }
     });
 
     // Get enrollments for each course
     const enrollments = await Enrollment.findAll();
-    console.log(enrollments);
+
+    // Calculate progress for each student in each course
+    const coursesWithProgress = await Promise.all(allCourses.map(async (course) => {
+      const courseData = course.toJSON();
+      courseData.studentProgress = await Promise.all(allUsers.map(async (student) => {
+        const enrollment = enrollments.find(e => e.userId === student.id && e.courseId === course.id);
+        if (!enrollment) return null;
+
+        // Get all pages in the course
+        const allPages = course.chapters.flatMap(chapter => chapter.pages);
+        const totalPages = allPages.length;
+
+        // Count completed pages
+        const completedPages = await Progress.count({
+          where: {
+            userId: student.id,
+            pageId: allPages.map(page => page.id),
+            isComplete: true
+          }
+        });
+
+        // Calculate progress percentage
+        const progressPercentage = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
+
+        return {
+          student,
+          progress: progressPercentage,
+          completedPages,
+          totalPages
+        };
+      }));
+
+      return courseData;
+    }));
 
     response.render('educator/report', {
-      courses: allCourses,
+      courses: coursesWithProgress,
       users: allUsers,
       enrollments
     });
@@ -560,10 +663,23 @@ app.get("/courses", async function (request, response) {
       };
     }));
 
+    // Get enrolled courses for the current user if they are logged in
+    let enrolledCourses = [];
+    if (request.user) {
+      enrolledCourses = await Course.findAll({
+        include: [{
+          model: User,
+          as: 'students',
+          where: { id: request.user.id }
+        }]
+      });
+    }
+
     response.render('courses/index', { 
       courses: coursesWithEnrollments,
       educators,
-      role: request.user ? request.user.role : null
+      role: request.user ? request.user.role : null,
+      enrolledCourses
     });
   } catch (error) {
     console.error(error);
@@ -579,6 +695,250 @@ app.get("/signout", function (request, response, next) {
     }
     response.redirect("/");
   });
+});
+
+// Delete page
+app.delete("/course/:courseId/chapters/:chapterId/pages/:pageId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const page = await Page.findByPk(request.params.pageId);
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    
+    if (!page || !chapter) {
+      return response.status(404).json({ success: false, message: 'Page or Chapter not found' });
+    }
+
+    // Check if user is the course creator
+    const course = await Course.findByPk(request.params.courseId);
+    if (course.userId !== request.user.id) {
+      return response.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Delete all progress records for this page
+    await Progress.destroy({
+      where: { pageId: page.id }
+    });
+
+    // Delete the page
+    await page.destroy();
+
+    response.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Delete chapter
+app.delete("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    
+    if (!chapter) {
+      return response.status(404).json({ success: false, message: 'Chapter not found' });
+    }
+
+    // Check if user is the course creator
+    const course = await Course.findByPk(request.params.courseId);
+    if (course.userId !== request.user.id) {
+      return response.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    // Get all pages in the chapter
+    const pages = await Page.findAll({
+      where: { chapterId: chapter.id }
+    });
+
+    // Delete all progress records for all pages in this chapter
+    await Progress.destroy({
+      where: { pageId: pages.map(page => page.id) }
+    });
+
+    // Delete all pages in the chapter
+    await Page.destroy({
+      where: { chapterId: chapter.id }
+    });
+
+    // Delete the chapter
+    await chapter.destroy();
+
+    response.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Edit page route
+app.get("/course/:courseId/chapters/:chapterId/pages/:pageId/edit", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const page = await Page.findByPk(request.params.pageId);
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    const course = await Course.findByPk(request.params.courseId);
+
+    if (!page || !chapter || !course) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).render('errors/coursenotfound');
+    }
+
+    response.render('pages/edit', { course, chapter, page });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error);
+  }
+});
+
+// Update page route
+app.post("/course/:courseId/chapters/:chapterId/pages/:pageId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const page = await Page.findByPk(request.params.pageId);
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    const course = await Course.findByPk(request.params.courseId);
+
+    if (!page || !chapter || !course) {
+      return response.status(404).json({ success: false, message: 'Page, Chapter, or Course not found' });
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await page.update({
+      title: request.body.title,
+      content: request.body.content
+    });
+
+    response.redirect(`/course/${course.id}/chapters/${chapter.id}/pages/${page.id}`);
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Edit chapter route
+app.get("/course/:courseId/chapters/:chapterId/edit", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    const course = await Course.findByPk(request.params.courseId);
+
+    if (!chapter || !course) {
+      return response.status(404).render('errors/coursenotfound');
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).render('errors/coursenotfound');
+    }
+
+    response.render('chapters/edit', { course, chapter });
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error);
+  }
+});
+
+// Update chapter route
+app.post("/course/:courseId/chapters/:chapterId", connectEnsureLogin.ensureLoggedIn(), async function (request, response) {
+  try {
+    const chapter = await Chapter.findByPk(request.params.chapterId);
+    const course = await Course.findByPk(request.params.courseId);
+
+    if (!chapter || !course) {
+      return response.status(404).json({ success: false, message: 'Chapter or Course not found' });
+    }
+
+    // Check if user is the course creator
+    if (course.userId !== request.user.id) {
+      return response.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+
+    await chapter.update({
+      title: request.body.title,
+      description: request.body.description
+    });
+
+    response.redirect(`/course/${course.id}/chapters/${chapter.id}`);
+  } catch (error) {
+    console.error(error);
+    response.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Student Progress Report
+app.get("/student/progress", connectEnsureLogin.ensureLoggedIn(), async (req, res) => {
+    if (req.user.role !== 'student') {
+        return res.redirect('/');
+    }
+
+    try {
+        // Get all courses the student is enrolled in
+        const enrolledCourses = await Course.findAll({
+            include: [{
+                model: User,
+                as: 'students',
+                where: { id: req.user.id }
+            }]
+        });
+
+        // Get progress for each course
+        const coursesWithProgress = await Promise.all(enrolledCourses.map(async (course) => {
+            // Get all chapters in the course
+            const chapters = await Chapter.findAll({
+                where: { courseId: course.id },
+                order: [['order', 'ASC']],
+                include: [{
+                    model: Page,
+                    as: 'pages',
+                    order: [['order', 'ASC']]
+                }]
+            });
+
+            // Calculate progress for each chapter
+            const chaptersWithProgress = await Promise.all(chapters.map(async (chapter) => {
+                const totalPages = chapter.pages.length;
+                const completedPages = await Progress.count({
+                    where: {
+                        userId: req.user.id,
+                        pageId: chapter.pages.map(page => page.id),
+                        isComplete: true
+                    }
+                });
+
+                return {
+                    ...chapter.toJSON(),
+                    progress: totalPages > 0 ? (completedPages / totalPages) * 100 : 0,
+                    completedPages,
+                    totalPages
+                };
+            }));
+
+            // Calculate overall course progress
+            const totalPages = chaptersWithProgress.reduce((sum, chapter) => sum + chapter.totalPages, 0);
+            const completedPages = chaptersWithProgress.reduce((sum, chapter) => sum + chapter.completedPages, 0);
+            const overallProgress = totalPages > 0 ? (completedPages / totalPages) * 100 : 0;
+
+            return {
+                ...course.toJSON(),
+                chapters: chaptersWithProgress,
+                overallProgress,
+                completedPages,
+                totalPages
+            };
+        }));
+
+        res.render('student/progress', {
+            user: req.user,
+            courses: coursesWithProgress,
+            role: req.user.role
+        });
+    } catch (error) {
+        console.error('Error fetching student progress:', error);
+        res.status(500).send('Error fetching progress');
+    }
 });
 
 module.exports = app;
