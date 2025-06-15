@@ -1,6 +1,7 @@
 const request = require('supertest');
 const db = require('../models');
 const app = require('../app');
+const cheerio = require('cheerio');
 
 let server, agent;
 
@@ -30,6 +31,27 @@ describe("Learning Management System Test Suite", () => {
             expect(response.status).toBe(302); 
         });
 
+        test("should render welcome message with user's name", async () => {
+            // Login the educator
+            const response = await agent
+                .post("/auth/signup")
+                .send({
+                    email: "educator@test.com",
+                    password: "password123",
+                    role: "educator",
+                    name: "Test Educator"
+                });
+
+            const dashboardResponse = await agent.get("/educator/dashboard");
+
+            expect(dashboardResponse.status).toBe(200);
+
+            const $ = cheerio.load(dashboardResponse.text);
+            const welcomeMessage = $('#welcome-message').text();
+
+            expect(welcomeMessage).toBe("Welcome, Test Educator! 👋");
+        });
+
         test("should register a new student", async () => {
             const response = await agent
                 .post("/auth/signup")
@@ -41,6 +63,36 @@ describe("Learning Management System Test Suite", () => {
                 });
             expect(response.status).toBe(302); 
         });
+
+
+
+
+
+        test("should render welcome message with user's name", async () => {
+            const response = await agent
+                .post("/auth/signup")
+                .send({
+                    email: "student@test.com",
+                    password: "password123",
+                    role: "student",
+                    name: "Test Student"
+                });
+
+            const dashboardResponse = await agent.get("/student/dashboard");
+
+            expect(dashboardResponse.status).toBe(200);
+
+            const $ = cheerio.load(dashboardResponse.text);
+            const welcomeMessage = $('#welcome-message').text();
+
+            expect(welcomeMessage).toBe("Welcome, Test Student! 👋");
+        });
+
+
+
+
+
+
 
         test("should login user", async () => {
             const response = await agent

@@ -1,10 +1,7 @@
 const express = require("express");
 const app = express();
 const { User, Course, Chapter, Page, Progress, Enrollment } = require("./models");
-const { name } = require("ejs");
-
 const bodyParser = require("body-parser");
-const path = require("path");
 const { request } = require("http");
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: false }));
@@ -14,10 +11,6 @@ const session = require("express-session");
 const connectEnsureLogin = require("connect-ensure-login");
 const LocalStrategy = require("passport-local");
 const bcrypt = require("bcrypt");
-const { user } = require("pg/lib/defaults.js");
-const { where } = require("sequelize");
-
-// const flash = require("connect-flash");
 
 // Middleware
 app.use(express.json());
@@ -426,8 +419,7 @@ app.post("/course/:courseId/chapters/pages", connectEnsureLogin.ensureLoggedIn()
       chapterId: chapter.id,
       order: newOrder
     });
-
-    response.redirect(`/course/${course.id}/chapters/${chapter.id}`);
+    response.redirect(`/course/${course.id}/chapters/${chapter.id}/pages/${page.id}`);
   } catch (error) {
     console.error(error);
     response.status(500).send(error);
